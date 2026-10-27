@@ -1,0 +1,14 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Pipeline output: raw exports and the DuckDB warehouse are rebuilt by run_pipeline.py
+data/
+*.duckdb
+*.duckdb.wal
+
+# Secrets
+.env
