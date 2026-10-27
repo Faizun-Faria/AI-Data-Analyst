@@ -1,0 +1,56 @@
+# CFPB Consumer Complaint Database narratives archive.
+# https://www.consumerfinance.gov/foia-requests/foia-electronic-reading-room/cfpb-consumer-complaint-database-narratives-archive/
+#
+# The CFPB stopped publishing complaint narratives in August 2026, so this archive is a
+# fixed dataset: complaints received 1 Dec 2011 to 14 Aug 2026, in 21 zipped CSV exports.
+# The pipeline replays the exports in the order listed below, one batch per export.
+
+name: cfpb
+description: CFPB Consumer Complaint Database narratives archive
+enabled: true
+format: csv_zip
+base_uri: https://files.consumerfinance.gov/f/documents
+
+# Every export should carry exactly these columns, in this order. An export that
+# doesn't still lands in the raw zone, flagged in ingestion_audit.columns_match.
+expected_columns:
+  - Date received
+  - Product
+  - Sub-product
+  - Issue
+  - Sub-issue
+  - Consumer complaint narrative
+  - Company public response
+  - Company
+  - State
+  - ZIP code
+  - Tags
+  - Submitted via
+  - Date sent to company
+  - Company response to consumer
+  - Timely response?
+  - Complaint ID
+
+# Oldest first. About 1.4 GB compressed in total.
+exports:
+  - CCDB_Export_1_December_2011_through_April_2018.zip
+  - CCDB_Export_2_May_2018_through_April_2021.zip
+  - CCDB_Export_3_May_2021_through_October_2022.zip
+  - CCDB_Export_4_November_2022_through_August_2023.zip
+  - CCDB_Export_5_September_2023_through_March_2024.zip
+  - CCDB_Export_6_April_2024_through_July_2024.zip
+  - CCDB_Export_7_August_2024_through_October_2024.zip
+  - CCDB_Export_8_November_2024_through_December_2024.zip
+  - CCDB_Export_9_January_2025_through_February_2025.zip
+  - CCDB_Export_10_March_2025_through_April_2025.zip
+  - CCDB_Export_11_May_2025_through_June_2025.zip
+  - CCDB_Export_12_July_2025_through_August_2025.zip
+  - CCDB_Export_13_September_2025_through_October_2025.zip
+  - CCDB_Export_14_November_2025_through_December_2025.zip
+  - CCDB_Export_15_January_2026_through_February_2026.zip
+  - CCDB_Export_16_March_2026.zip
+  - CCDB_Export_17_April_2026.zip
+  - CCDB_Export_18_May_2026.zip
+  - CCDB_Export_19_June_2026.zip
+  - CCDB_Export_20_July_2026.zip
+  - CCDB_Export_21_August_2026.zip

@@ -1,0 +1,12 @@
+# Irish Financial Services and Pensions Ombudsman (FSPO) decisions: anonymised full text
+# of legally binding decisions since 2018. Optional second source for document search.
+#
+# Off until FSPO's terms of use are checked for bulk download (see docs/03-decision-log.md,
+# D-009). If anything is unclear, this layer stays a small sample.
+
+name: fspo
+description: FSPO legally binding decisions (optional document layer)
+enabled: false
+format: documents
+base_uri: ""
+exports: []

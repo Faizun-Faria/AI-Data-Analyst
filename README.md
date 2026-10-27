@@ -4,7 +4,7 @@ Ask a question about 15 years of US financial complaints in plain English, and g
 
 The AI part only works because of what sits underneath it: an audited complaints warehouse, and a semantic layer that defines every metric, so the analyst reads precise definitions instead of guessing from raw tables.
 
-> **Status:** phase 0 (framing) is done. Ingestion is next; see the [roadmap](#roadmap).
+> **Status:** phase 1 of 8 is done. Ingestion lands and audits the CFPB archive; the warehouse, semantic layer and AI analyst come next. See the [roadmap](#roadmap).
 
 ![Architecture: data sources feed audited ingestion, a dbt warehouse and a semantic layer; the AI analyst answers only from defined metrics](docs/images/architecture.png)
 
@@ -30,12 +30,62 @@ The CFPB stopped publishing complaint narratives in August 2026, so the archive 
 
 **Complaint narratives are unverified consumer statements.** Answers describe what was reported, not what happened.
 
+## Quick start
+
+Needs Python 3.11 or later.
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate          # macOS or Linux: source .venv/bin/activate
+pip install -r requirements.txt
+
+python run_pipeline.py ingest --export CCDB_Export_21_August_2026.zip   # newest export, 10.5 MB
+python run_pipeline.py ingest                                           # all 21 exports, about 1.4 GB
+python run_pipeline.py status                                           # every ingestion attempt
+pytest
+```
+
+Raw files land in `data/raw/` and the audit table lives in `data/warehouse/complaint_radar.duckdb`. To land raw files in S3 instead, configure AWS credentials and set `COMPLAINT_RADAR_RAW=s3://your-bucket/raw`.
+
+## How ingestion works
+
+- **One config per source.** [`config/sources/cfpb.yaml`](config/sources/cfpb.yaml) lists the 21 exports oldest first and the 16 columns each should carry. Adding a source means adding a file there.
+- **One batch per export.** Each export is downloaded while its SHA-256 is computed, profiled, and copied into `data/raw/<source>/<batch_id>/`. The batch ID comes from the checksum, so the same bytes can never land twice.
+- **Every attempt is audited.** An attempt gets a row in `ingestion_audit` as soon as it starts, so even a crash leaves a trace:
+
+  | Column | What it records |
+  | --- | --- |
+  | `attempt_id` | Sequence number of the attempt |
+  | `source`, `export_name`, `source_uri` | What was fetched, and from where |
+  | `status` | `running`, `landed`, `unchanged` or `failed` |
+  | `batch_id`, `landed_uri` | The batch and where its file landed |
+  | `sha256`, `byte_size` | Checksum and size of the export |
+  | `row_count`, `column_count`, `columns_match` | Data rows (counted with a CSV parser, because narratives contain line breaks), columns, and whether they match the config |
+  | `extract_ts` | When the CFPB extracted the file, from the zip |
+  | `started_at_utc`, `finished_at_utc`, `error` | Timing, and the error if it failed |
+
+- **Safe re-runs.** A landed export is skipped. `--force` fetches it again, and it lands as a new batch only if its bytes changed. A failed export is retried on the next run, and any failure makes the run exit non-zero.
+
+## Project layout
+
+```text
+complaint_radar/        pipeline package
+  config.py             loads and validates config/sources/*.yaml
+  ingest.py             fetch, checksum, profile and land each export
+  audit.py              the ingestion_audit table in DuckDB
+  storage.py            raw zone: local folder or S3
+config/sources/         one YAML file per source
+docs/                   problem statement, personas, user stories, decision log
+tests/                  pytest suite, run in CI
+run_pipeline.py         one command to run the pipeline
+```
+
 ## Roadmap
 
 The MVP is phases 0-5, published at the MVP gate; phases 6-8 follow.
 
 - [x] **0. Frame:** problem statement, two personas, 14 user stories with acceptance criteria, decision log
-- [ ] **1. Ingest:** a YAML config per source; batch ID, extract timestamp, SHA-256 and row count in an `ingestion_audit` table; safe re-runs
+- [x] **1. Ingest:** YAML config per source; batch ID, extract timestamp, SHA-256 and row count in `ingestion_audit`; safe re-runs
 - [ ] **2. Warehouse:** dbt on DuckDB, with staging and mart models, data tests, a quarantine table, a completeness check and a star schema
 - [ ] **3. Semantic layer:** every metric and dimension defined, with join paths, column descriptions and a glossary
 - [ ] **4. AI analyst:** question → plan → SQL → sqlglot safety check → run → answer with SQL, row count and assumptions; every question logged
@@ -58,7 +108,7 @@ These figures are measured from phase 4 onward, and none are estimated.
 ## Data use
 
 - Complaint narratives are never sent to an LLM provider that trains on inputs; the API's data-use terms are checked first.
-- Raw exports and the warehouse will not be committed to this repo; the pipeline rebuilds them from the public archive.
+- Raw exports and the warehouse are not committed to this repo. `run_pipeline.py` rebuilds them from the public archive.
 
 ## License
 

@@ -1,0 +1,9 @@
+# Pipeline
+duckdb==2.0.0
+requests==2.34.2
+PyYAML==6.0.3
+boto3==1.43.119  # only used when the raw zone is s3://
+
+# Development
+pytest==9.1.1
+ruff==0.17.3
