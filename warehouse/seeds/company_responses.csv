@@ -1,0 +1,9 @@
+company_response,response_status,relief_type
+Closed with explanation,closed,none
+Closed with non-monetary relief,closed,non-monetary
+Closed with monetary relief,closed,monetary
+Closed with relief,closed,type not recorded
+Closed without relief,closed,none
+Closed,closed,unknown
+In progress,in progress,pending
+Untimely response,untimely,unknown

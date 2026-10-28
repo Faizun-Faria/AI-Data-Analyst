@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_cfpb__complaints
+    description: >
+      Every bronze row, typed and trimmed: empty text becomes null, dates become dates,
+      "Timely response?" and Tags become true/false columns, and State is checked against
+      the US postal codes. Nothing is filtered. A view, so it adds no disk space.
+    columns:
+      - name: bronze_row_id
+        description: The row's position in the bronze table; identifies a row within one build.
+        data_tests: [unique, not_null]
+      - name: complaint_id
+        description: Complaint ID as a number; null when the published value isn't a whole number.
+      - name: state
+        description: The published State when it's a recognised US postal code, else null.
+      - name: state_raw
+        description: State exactly as published.
+      - name: is_state_unrecognized
+        description: State was given but isn't a US postal code.
+      - name: is_sent_before_received
+        description: Date sent to company is earlier than date received (a source quirk; kept).
+      - name: company_key
+        description: md5 of the company name; joins to dim_company.
+      - name: product_key
+        description: md5 of product and sub-product; joins to dim_product.

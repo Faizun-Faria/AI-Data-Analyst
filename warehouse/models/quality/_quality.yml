@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: int_complaints_checked
+    description: >
+      Every staged row (without the narrative) plus failed_rule: the first hard rule it
+      breaks, or null if it breaks none.
+    columns:
+      - name: failed_rule
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - complaint_id_invalid
+                  - date_received_invalid
+                  - date_received_out_of_range
+                  - product_missing
+                  - company_missing
+                  - complaint_id_duplicate
+
+  - name: quarantine_complaints
+    description: Rows that broke a hard rule; they never reach the marts.
+    columns:
+      - name: failed_rule
+        data_tests: [not_null]
+      - name: batch_id
+        data_tests: [not_null]
+
+  - name: completeness_by_batch
+    description: >
+      Per batch: rows counted at ingestion, rows loaded into bronze, rows in the marts and
+      rows in quarantine. is_complete is true when they all add up.
+    columns:
+      - name: batch_id
+        data_tests: [unique, not_null]
+
+  - name: dq_summary
+    description: Rows caught by each quarantine rule and each soft flag, per batch.
+    columns:
+      - name: kind
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [quarantine, flag]

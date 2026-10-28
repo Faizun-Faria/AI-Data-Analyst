@@ -10,5 +10,11 @@ data/
 *.duckdb
 *.duckdb.wal
 
+# dbt's build output, logs and local settings
+warehouse/target/
+warehouse/logs/
+warehouse/dbt_packages/
+warehouse/.user.yml
+
 # Secrets
 .env

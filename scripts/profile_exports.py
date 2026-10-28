@@ -484,7 +484,7 @@ def build_report(conn: duckdb.DuckDBPyConnection, loads: list[dict]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Profile the landed CFPB exports")
-    parser.add_argument("--db", type=Path, default=ROOT / "data/warehouse/complaint_radar.duckdb")
+    parser.add_argument("--db", type=Path, default=ROOT / "data/warehouse/query_cf.duckdb")
     parser.add_argument("--profile-db", type=Path, default=ROOT / "data/profile/profile.duckdb")
     parser.add_argument("--out", type=Path, default=ROOT / "docs/04-data-profile.md")
     parser.add_argument("--limit", type=int, help="only the first N exports")

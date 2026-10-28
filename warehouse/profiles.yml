@@ -1,0 +1,12 @@
+# run_pipeline.py sets QUERY_CF_DB to the warehouse file. The default works when
+# you run dbt yourself from inside this folder.
+query_cf:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('QUERY_CF_DB', '../data/warehouse/query_cf.duckdb') }}"
+      threads: 4
+      settings:
+        memory_limit: "{{ env_var('QUERY_CF_MEMORY', '4GB') }}"
+        preserve_insertion_order: false

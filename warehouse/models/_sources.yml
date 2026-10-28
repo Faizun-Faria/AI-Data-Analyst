@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Written by `python run_pipeline.py load`.
+    schema: bronze
+    tables:
+      - name: cfpb_complaints
+        description: >
+          Every row of every current batch exactly as published (all text, original column
+          names), plus batch_id and export_name.
+
+  - name: pipeline
+    description: Audit tables written by run_pipeline.py.
+    schema: main
+    tables:
+      - name: ingestion_audit
+        description: One row per attempt to land an export (phase 1).
+      - name: load_audit
+        description: One row per batch loaded into bronze.

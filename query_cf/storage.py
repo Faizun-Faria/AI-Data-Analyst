@@ -54,3 +54,16 @@ def open_store(raw_uri: str) -> RawStore:
     if raw_uri.startswith("s3://"):
         return S3Store(raw_uri)
     return LocalStore(raw_uri)
+
+
+def local_copy(landed_uri: str, dest_dir: Path) -> Path:
+    """A local path to a landed file, downloading it into dest_dir first if it's in S3."""
+    if not landed_uri.startswith("s3://"):
+        return Path(landed_uri)
+    bucket, _, key = landed_uri.removeprefix("s3://").partition("/")
+
+    import boto3  # only needed when the raw zone is S3
+
+    dest = dest_dir / Path(key).name
+    boto3.client("s3").download_file(bucket, key, str(dest))
+    return dest

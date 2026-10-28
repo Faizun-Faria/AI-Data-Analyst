@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from complaint_radar import audit
-from complaint_radar.config import SourceConfig
-from complaint_radar.storage import LocalStore
+from query_cf import audit
+from query_cf.config import SourceConfig
+from query_cf.storage import LocalStore
 
 HEADER = ("Date received", "Product", "Consumer complaint narrative", "Company", "Complaint ID")
 

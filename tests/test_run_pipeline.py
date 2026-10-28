@@ -2,6 +2,7 @@ import pytest
 import yaml
 
 import run_pipeline
+from conftest import HEADER
 
 
 @pytest.fixture
@@ -15,6 +16,7 @@ def config_dir(tmp_path, inbox):
         "format": "csv_zip",
         "base_uri": str(inbox),
         "exports": ["export_1.zip", "export_2.zip"],
+        "expected_columns": list(HEADER),
     }
     (folder / "test.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
     return folder
@@ -37,6 +39,18 @@ def test_ingest_then_status(cli, raw_dir, capsys):
     out = capsys.readouterr().out
     assert "landed     export_1.zip (3 rows" in out
     assert out.count("landed") >= 4  # two log lines + two status rows
+
+
+def test_load_then_status_shows_batch_loads(cli, raw_dir, capsys):
+    assert cli("ingest", "--raw", str(raw_dir)) == 0
+    assert cli("load") == 0
+    assert cli("load") == 0
+    assert cli("status") == 0
+
+    out = capsys.readouterr().out
+    assert "loaded     export_1.zip (3 rows)" in out
+    assert "skipped    export_1.zip" in out
+    assert "Batch loads" in out
 
 
 def test_status_before_any_run(cli, capsys):

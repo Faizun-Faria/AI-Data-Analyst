@@ -1,7 +1,7 @@
 import pytest
 import yaml
 
-from complaint_radar.config import ConfigError, load_source, load_sources
+from query_cf.config import ConfigError, load_source, load_sources
 
 
 def write_config(folder, stem, **fields):

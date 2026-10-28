@@ -8,9 +8,9 @@ Today a question like "are complaints about accounts opened without consent risi
 
 AI tools that answer in plain English make this worse when they guess from raw tables: fast, confident answers that nobody can check.
 
-## What Complaint Radar does
+## What QueryCF does
 
-Complaint Radar is an AI data analyst over 15 years of US financial complaints. Ask a question in plain English and get back a number, a chart or a short report, with the SQL, row count and assumptions behind it.
+QueryCF is a conversational AI analyst over 15 years of US consumer finance complaints. Ask a question in plain English and get back a number, a chart or a short report, with the SQL, row count and assumptions behind it.
 
 It answers only from metrics defined in a semantic layer, which sits on an audited warehouse where every row traces back to the batch it arrived in.
 

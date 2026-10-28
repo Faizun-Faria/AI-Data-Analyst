@@ -1,0 +1,33 @@
+name: query_cf
+version: "1.0.0"
+profile: query_cf
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # Complaints received in this window are valid. The archive page says 14 Aug 2026, but
+  # export 21 runs to 31 Aug and those complaints are kept (decision log D-016).
+  archive_start: "2011-12-01"
+  archive_end: "2026-08-31"
+
+models:
+  query_cf:
+    staging:
+      +schema: staging
+      +materialized: view
+    quality:
+      +schema: quality
+      +materialized: table
+    marts:
+      +schema: marts
+      +materialized: table
+
+seeds:
+  query_cf:
+    +schema: reference

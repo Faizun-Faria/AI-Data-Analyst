@@ -6,7 +6,7 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["complaint_radar", "run_pipeline", "conftest"]
+known-first-party = ["query_cf", "run_pipeline", "conftest"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

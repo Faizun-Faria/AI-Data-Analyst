@@ -1,0 +1,43 @@
+version: 2
+
+seeds:
+  - name: product_groups
+    description: >
+      Maps each of the 21 product names in the archive to a group that stays stable across
+      the CFPB's renames of April 2017 and August 2023. "Credit card or prepaid card"
+      (2017-2023) maps to Credit card, although some of its complaints are about prepaid
+      cards. A product missing from this file fails the build (dim_product test).
+    config:
+      column_types:
+        product: varchar
+        product_group: varchar
+    columns:
+      - name: product
+        data_tests: [unique, not_null]
+      - name: product_group
+        data_tests: [not_null]
+
+  - name: company_responses
+    description: >
+      Turns each company response into a status (closed, in progress, untimely) and the
+      kind of relief the consumer got. "Closed", "Closed with relief" and "Closed without
+      relief" are older values that don't say which kind of relief.
+    config:
+      column_types:
+        company_response: varchar
+        response_status: varchar
+        relief_type: varchar
+    columns:
+      - name: company_response
+        data_tests: [unique, not_null]
+
+  - name: us_state_codes
+    description: US postal codes for states, DC, territories, freely associated states and military mail.
+    config:
+      column_types:
+        state_code: varchar
+        state_name: varchar
+        kind: varchar
+    columns:
+      - name: state_code
+        data_tests: [unique, not_null]

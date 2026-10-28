@@ -20,9 +20,9 @@ from pathlib import Path
 import duckdb
 import requests
 
-from complaint_radar import audit
-from complaint_radar.config import SourceConfig
-from complaint_radar.storage import RawStore
+from query_cf import audit
+from query_cf.config import SourceConfig
+from query_cf.storage import RawStore
 
 CHUNK_BYTES = 1 << 20
 # Narratives can run long; the csv module's default 128 KB field limit is too small.

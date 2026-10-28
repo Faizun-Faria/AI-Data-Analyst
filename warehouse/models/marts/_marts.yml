@@ -1,0 +1,87 @@
+version: 2
+
+models:
+  - name: fct_complaints
+    description: >
+      One row per complaint that passed every hard rule, with keys to the company, product
+      and date dimensions. batch_id traces each row to the export it arrived in.
+    columns:
+      - name: complaint_id
+        data_tests: [unique, not_null]
+      - name: date_received
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_day
+      - name: company_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_company')
+                field: company_key
+      - name: product_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_key
+      - name: company_response
+        description: As published. A new value missing from seeds/company_responses.csv fails this test.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('company_responses')
+                field: company_response
+      - name: response_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [closed, in progress, untimely, unknown]
+      - name: relief_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [monetary, non-monetary, type not recorded, none, pending, unknown]
+      - name: is_timely_response
+        data_tests: [not_null]
+      - name: batch_id
+        data_tests: [not_null]
+
+  - name: dim_company
+    description: One row per company.
+    columns:
+      - name: company_key
+        data_tests: [unique, not_null]
+      - name: company_name
+        data_tests: [unique, not_null]
+
+  - name: dim_product
+    description: One row per product and sub-product pair, with its stable product group.
+    columns:
+      - name: product_key
+        data_tests: [unique, not_null]
+      - name: product_group
+        description: From seeds/product_groups.csv. A product missing there fails this test.
+        data_tests: [not_null]
+
+  - name: dim_date
+    description: One row per day from 2011-12-01 to 2026-08-31.
+    columns:
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  - name: complaint_narratives
+    description: The narrative text of each complaint in fct_complaints that has one.
+    columns:
+      - name: complaint_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_complaints')
+                field: complaint_id

@@ -2,9 +2,9 @@ import hashlib
 import zipfile
 from pathlib import Path
 
-from complaint_radar import audit
-from complaint_radar.ingest import ingest_source, profile_zip
 from conftest import HEADER, ROWS, write_export
+from query_cf import audit
+from query_cf.ingest import ingest_source, profile_zip
 
 
 def quiet(_message: str) -> None:

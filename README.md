@@ -1,16 +1,16 @@
-# Complaint Radar
+# QueryCF
 
-Ask a question about 15 years of US financial complaints in plain English, and get back a number, a chart or a short report, with the SQL behind it shown.
+A conversational AI analyst that turns plain-English questions into validated SQL, charts and auditable reports over 17.5M+ consumer finance complaints.
 
 The AI part only works because of what sits underneath it: an audited complaints warehouse, and a semantic layer that defines every metric, so the analyst reads precise definitions instead of guessing from raw tables.
 
-> **Status:** phase 1 of 8 is done. Ingestion lands and audits the CFPB archive; the warehouse, semantic layer and AI analyst come next. See the [roadmap](#roadmap).
+> **Status:** phases 0-2 are done. The CFPB archive is ingested, audited and modelled into a tested star schema; the semantic layer and AI analyst come next. See the [roadmap](#roadmap).
 
 ![Architecture: data sources feed audited ingestion, a dbt warehouse and a semantic layer; the AI analyst answers only from defined metrics](docs/images/architecture.png)
 
 ## Why
 
-Regulated firms need answers they can audit. A plain-English answer is only useful if you can see how it was produced: which metric definition it used, which SQL ran, how many rows it read, and which batch of data those rows came from. Complaint Radar is built so that every answer traces back that far.
+Regulated firms need answers they can audit. A plain-English answer is only useful if you can see how it was produced: which metric definition it used, which SQL ran, how many rows it read, and which batch of data those rows came from. QueryCF is built so that every answer traces back that far.
 
 Framing documents:
 
@@ -18,12 +18,14 @@ Framing documents:
 - [Personas](docs/01-personas.md)
 - [User stories with acceptance criteria](docs/02-user-stories.md)
 - [Decision log](docs/03-decision-log.md)
+- [Data profile of all 21 exports](docs/04-data-profile.md)
+- [Warehouse design](docs/05-warehouse-design.md)
 
 ## Data
 
 | Source | What it holds | How it's used |
 | --- | --- | --- |
-| [CFPB Consumer Complaint Database narratives archive](https://www.consumerfinance.gov/foia-requests/foia-electronic-reading-room/cfpb-consumer-complaint-database-narratives-archive/) | US complaints received 1 Dec 2011 to 14 Aug 2026, in 21 zipped CSV exports (about 1.4 GB), with product, issue, company, company response and consumer narrative | Main dataset. Each export is replayed as a new batch, oldest first |
+| [CFPB Consumer Complaint Database narratives archive](https://www.consumerfinance.gov/foia-requests/foia-electronic-reading-room/cfpb-consumer-complaint-database-narratives-archive/) | 17,533,918 US complaints received 1 Dec 2011 to 31 Aug 2026, in 21 zipped CSV exports (about 1.4 GB), with product, issue, company, company response and consumer narrative | Main dataset. Each export is replayed as a new batch, oldest first |
 | FSPO decisions | Anonymised full text of the Irish Financial Services and Pensions Ombudsman's legally binding decisions since 2018 | Optional document layer, off until its terms of use are checked |
 
 The CFPB stopped publishing complaint narratives in August 2026, so the archive is a fixed dataset. That also makes it a source of ground truth: any answer the analyst gives can be checked against a number computed directly in SQL.
@@ -40,12 +42,14 @@ python -m venv .venv
 pip install -r requirements.txt
 
 python run_pipeline.py ingest --export CCDB_Export_21_August_2026.zip   # newest export, 10.5 MB
-python run_pipeline.py ingest                                           # all 21 exports, about 1.4 GB
-python run_pipeline.py status                                           # every ingestion attempt
+python run_pipeline.py ingest      # all 21 exports, about 1.4 GB
+python run_pipeline.py load        # copy each landed batch into the warehouse
+python run_pipeline.py transform   # dbt builds and tests the star schema
+python run_pipeline.py status      # every ingestion attempt and batch load
 pytest
 ```
 
-Raw files land in `data/raw/` and the audit table lives in `data/warehouse/complaint_radar.duckdb`. To land raw files in S3 instead, configure AWS credentials and set `COMPLAINT_RADAR_RAW=s3://your-bucket/raw`.
+`python run_pipeline.py all` runs ingest, load and transform in one go. Raw files land in `data/raw/`; the audit tables and the warehouse live in `data/warehouse/query_cf.duckdb`. To land raw files in S3 instead, configure AWS credentials and set `QUERY_CF_RAW=s3://your-bucket/raw`.
 
 ## How ingestion works
 
@@ -66,16 +70,31 @@ Raw files land in `data/raw/` and the audit table lives in `data/warehouse/compl
 
 - **Safe re-runs.** A landed export is skipped. `--force` fetches it again, and it lands as a new batch only if its bytes changed. A failed export is retried on the next run, and any failure makes the run exit non-zero.
 
+## How the warehouse works
+
+Every rule here comes from the [data profile](docs/04-data-profile.md); the [warehouse design](docs/05-warehouse-design.md) has the details.
+
+- **Bronze.** `load` copies each export's current batch into `bronze.cfpb_complaints` as published text, tagged with its `batch_id`. A newer batch of an export replaces the old rows in one transaction.
+- **Staging.** dbt types and trims every row: dates become dates, Yes/No becomes true/false, Tags become two flags, and State is checked against US postal codes.
+- **Quarantine.** A row with an invalid ID or date, a missing product or company, or a repeated ID goes to `quality.quarantine_complaints` with the rule it broke, and never reaches the marts.
+- **Flags.** Rows with smaller issues (a missing state or issue, a date sent before the date received) stay in the marts with a flag, so totals aren't understated. `quality.dq_summary` counts every rule and flag per batch.
+- **Star schema.** `marts.fct_complaints` (one row per complaint, with its `batch_id`) joins to `dim_company`, `dim_product` and `dim_date`. Narratives live in `marts.complaint_narratives`. `dim_product.product_group` stays stable across the CFPB's 2017 and 2023 product renames.
+- **Completeness.** For every batch, rows counted at ingestion must equal rows loaded, which must equal rows in the marts plus rows in quarantine. If not, the build fails and names the batch.
+
 ## Project layout
 
 ```text
-complaint_radar/        pipeline package
+query_cf/               pipeline package
   config.py             loads and validates config/sources/*.yaml
   ingest.py             fetch, checksum, profile and land each export
   audit.py              the ingestion_audit table in DuckDB
   storage.py            raw zone: local folder or S3
+  load.py               copies landed batches into the bronze table
+  transform.py          runs dbt build on the warehouse
 config/sources/         one YAML file per source
-docs/                   problem statement, personas, user stories, decision log
+warehouse/              dbt project: seeds, staging, quality and mart models, tests
+scripts/                profile_exports.py: profiles every export before modelling
+docs/                   framing, data profile, warehouse design, decision log
 tests/                  pytest suite, run in CI
 run_pipeline.py         one command to run the pipeline
 ```
@@ -86,7 +105,7 @@ The MVP is phases 0-5, published at the MVP gate; phases 6-8 follow.
 
 - [x] **0. Frame:** problem statement, two personas, 14 user stories with acceptance criteria, decision log
 - [x] **1. Ingest:** YAML config per source; batch ID, extract timestamp, SHA-256 and row count in `ingestion_audit`; safe re-runs
-- [ ] **2. Warehouse:** dbt on DuckDB, with staging and mart models, data tests, a quarantine table, a completeness check and a star schema
+- [x] **2. Warehouse:** dbt on DuckDB, with staging and mart models, data tests, a quarantine table, a completeness check and a star schema
 - [ ] **3. Semantic layer:** every metric and dimension defined, with join paths, column descriptions and a glossary
 - [ ] **4. AI analyst:** question → plan → SQL → sqlglot safety check → run → answer with SQL, row count and assumptions; every question logged
 - [ ] **5. Evaluation:** 50 questions with answers computed in SQL; accuracy by difficulty, run in CI
