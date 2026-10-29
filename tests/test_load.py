@@ -89,3 +89,18 @@ def test_unzipped_files_are_deleted_after_loading(source, store, conn, tmp_path)
     load.load_source(source, conn, work_dir=tmp_path / "work", log=quiet)
 
     assert list((tmp_path / "work").iterdir()) == []
+
+
+def test_an_export_in_the_config_without_a_landed_batch_is_reported(source, store, conn, tmp_path):
+    ingest_source(source, store, conn, only={"export_1.zip"}, log=quiet)
+
+    results = load.load_source(source, conn, work_dir=tmp_path / "work", log=quiet)
+
+    assert [(r.export_name, r.status) for r in results] == [
+        ("export_1.zip", "loaded"),
+        ("export_2.zip", "missing"),
+    ]
+    expected = conn.execute(
+        "select export_name from expected_exports where source = 'test' order by position"
+    ).fetchall()
+    assert expected == [("export_1.zip",), ("export_2.zip",)]

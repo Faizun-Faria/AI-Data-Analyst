@@ -1,8 +1,18 @@
 -- For every current batch: rows counted at ingestion = rows loaded into bronze = rows in
--- fct_complaints + rows in quarantine. tests/assert_batches_complete.sql fails the build
--- if any batch doesn't add up, and run_pipeline.py names it.
+-- fct_complaints + rows in quarantine. An export the source config lists but that has no
+-- landed batch at all appears with an empty batch_id and is never complete.
+-- tests/assert_batches_complete.sql fails the build if anything doesn't add up, and
+-- run_pipeline.py names it.
 
-with audited as (
+with expected as (
+
+    select export_name
+    from {{ source('pipeline', 'expected_exports') }}
+    where source = 'cfpb'
+
+),
+
+audited as (
 
     select batch_id, export_name, row_count as audited_rows
     from {{ source('pipeline', 'ingestion_audit') }}
@@ -31,6 +41,26 @@ batches as (
 
 ),
 
+missing as (
+
+    select
+        cast(null as varchar) as batch_id,
+        export_name,
+        0 as audited_rows,
+        0 as loaded_rows
+    from expected
+    where export_name not in (select export_name from batches)
+
+),
+
+all_exports as (
+
+    select * from batches
+    union all
+    select * from missing
+
+),
+
 in_marts as (
 
     select batch_id, count(*) as fact_rows
@@ -48,13 +78,14 @@ quarantined as (
 )
 
 select
-    batches.*,
+    all_exports.*,
     coalesce(in_marts.fact_rows, 0) as fact_rows,
     coalesce(quarantined.quarantined_rows, 0) as quarantined_rows,
-    batches.audited_rows = batches.loaded_rows
-        and batches.loaded_rows
+    all_exports.batch_id is not null
+        and all_exports.audited_rows = all_exports.loaded_rows
+        and all_exports.loaded_rows
             = coalesce(in_marts.fact_rows, 0) + coalesce(quarantined.quarantined_rows, 0)
         as is_complete
-from batches
-left join in_marts on batches.batch_id = in_marts.batch_id
-left join quarantined on batches.batch_id = quarantined.batch_id
+from all_exports
+left join in_marts on all_exports.batch_id = in_marts.batch_id
+left join quarantined on all_exports.batch_id = quarantined.batch_id

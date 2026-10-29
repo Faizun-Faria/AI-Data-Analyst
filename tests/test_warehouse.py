@@ -225,3 +225,15 @@ def test_a_lost_row_fails_the_build_and_names_its_batch(tmp_path):
     )
     assert not ok
     assert [row[1] for row in transform.incomplete_batches(db)] == ["CCDB_Export_1_Old.zip"]
+
+
+def test_an_export_that_never_landed_fails_the_build_and_is_named(tmp_path):
+    db, ok = build_warehouse(
+        tmp_path,
+        tamper="""
+            delete from ingestion_audit where export_name = 'CCDB_Export_2_New.zip';
+            delete from bronze.cfpb_complaints where export_name = 'CCDB_Export_2_New.zip';
+        """,
+    )
+    assert not ok
+    assert transform.incomplete_batches(db) == [(None, "CCDB_Export_2_New.zip", 0, 0, 0, 0)]

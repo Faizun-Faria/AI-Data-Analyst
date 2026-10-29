@@ -104,20 +104,22 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 
 def cmd_load(args: argparse.Namespace) -> int:
-    failed = 0
+    failed = missing = 0
     conn = audit.connect(args.db)
     try:
         for source in enabled_sources(args):
             print(f"{source.name}: loading into {load.bronze_table(source)}")
             results = load.load_source(source, conn, work_dir=Path(args.db).parent)
             failed += sum(r.status == audit.FAILED for r in results)
+            missing += sum(r.status == load.MISSING for r in results)
     finally:
         conn.close()
 
     if failed:
         print(f"{failed} batch(es) failed to load; see `python run_pipeline.py status`.")
-        return 1
-    return 0
+    if missing:
+        print(f"{missing} export(s) in the config have no landed batch; run ingest first.")
+    return 1 if failed or missing else 0
 
 
 def cmd_transform(args: argparse.Namespace) -> int:
@@ -127,6 +129,9 @@ def cmd_transform(args: argparse.Namespace) -> int:
     ok = transform.run_dbt(args.db, dbt_args)
     incomplete = transform.incomplete_batches(args.db)
     for batch_id, export, audited, loaded, in_marts, quarantined in incomplete:
+        if batch_id is None:
+            print(f"INCOMPLETE {export}: listed in the config, but no batch of it has landed")
+            continue
         print(
             f"INCOMPLETE {export} (batch {batch_id}): audited {audited:,}, loaded {loaded:,}, "
             f"in marts {in_marts:,} + quarantined {quarantined:,}"

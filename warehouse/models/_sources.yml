@@ -18,3 +18,5 @@ sources:
         description: One row per attempt to land an export (phase 1).
       - name: load_audit
         description: One row per batch loaded into bronze.
+      - name: expected_exports
+        description: The exports each source config lists, rewritten by every load.

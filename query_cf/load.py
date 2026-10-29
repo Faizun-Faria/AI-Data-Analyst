@@ -4,6 +4,10 @@ bronze.<source>_complaints holds every row exactly as published, as text, plus t
 it came from; dbt builds everything else from it. Each export's latest landed batch is
 its current one, so when a newer batch lands, the export's old rows are replaced.
 load_audit records every batch loaded and how many rows it gave.
+
+Every run also records the exports the source config lists in expected_exports, and
+reports any of them that has no landed batch, so a whole export can't go missing quietly:
+dbt's completeness check reads the same table and fails the build.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from query_cf.config import SourceConfig
 from query_cf.storage import local_copy
 
 LOADED = "loaded"
+MISSING = "missing"  # listed in the source config, but no batch of it has landed
 
 # The strict CSV settings that scripts/profile_exports.py proved on all 21 exports. The
 # header is read in Python and passed in as `columns`, so DuckDB never has to guess.
@@ -40,6 +45,12 @@ create table if not exists load_audit (
     rows_loaded    bigint,
     loaded_at_utc  timestamp not null,
     error          varchar
+);
+
+create table if not exists expected_exports (
+    source       varchar not null,
+    export_name  varchar not null,
+    position     integer not null
 );
 """
 
@@ -69,6 +80,15 @@ def ensure_tables(conn: duckdb.DuckDBPyConnection, source: SourceConfig) -> None
         "    batch_id varchar not null,\n    export_name varchar not null\n)"
     )
     conn.execute(LOAD_AUDIT_DDL)
+
+
+def record_expected_exports(conn: duckdb.DuckDBPyConnection, source: SourceConfig) -> None:
+    """Replace the source's rows in expected_exports with the exports its config lists."""
+    conn.execute("delete from expected_exports where source = ?", [source.name])
+    conn.executemany(
+        "insert into expected_exports values (?, ?, ?)",
+        [[source.name, export, n] for n, export in enumerate(source.exports, start=1)],
+    )
 
 
 def current_batches(
@@ -169,13 +189,15 @@ def load_source(
     Each CSV is unzipped into a temporary folder inside work_dir and deleted once loaded.
     """
     ensure_tables(conn, source)
+    record_expected_exports(conn, source)
     conn.execute(f"set memory_limit = '{os.environ.get('QUERY_CF_MEMORY', '4GB')}'")
     conn.execute("set preserve_insertion_order = false")
     work_dir.mkdir(parents=True, exist_ok=True)
 
+    batches = current_batches(conn, source)
     results = []
     with tempfile.TemporaryDirectory(prefix="load-", dir=work_dir) as tmp:
-        for export_name, batch_id, landed_uri, audited_rows in current_batches(conn, source):
+        for export_name, batch_id, landed_uri, audited_rows in batches:
             if is_loaded(conn, batch_id):
                 log(f"  skipped    {export_name} (batch {batch_id} already loaded)")
                 results.append(LoadResult(export_name, batch_id, audit.SKIPPED))
@@ -199,6 +221,12 @@ def load_source(
             note = "" if rows == audited_rows else f"; ingestion counted {audited_rows:,}"
             log(f"  loaded     {export_name} ({rows:,} rows{note})")
             results.append(LoadResult(export_name, batch_id, LOADED, rows, note.lstrip("; ")))
+
+    landed = {batch[0] for batch in batches}
+    for export_name in source.exports:
+        if export_name not in landed:
+            log(f"  MISSING    {export_name} (no landed batch; run: python run_pipeline.py ingest)")
+            results.append(LoadResult(export_name, "", MISSING, message="no landed batch"))
     return results
 
 

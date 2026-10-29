@@ -29,10 +29,16 @@ models:
   - name: completeness_by_batch
     description: >
       Per batch: rows counted at ingestion, rows loaded into bronze, rows in the marts and
-      rows in quarantine. is_complete is true when they all add up.
+      rows in quarantine. is_complete is true when they all add up. An export listed in
+      the source config with no landed batch has an empty batch_id and is never complete.
     columns:
       - name: batch_id
-        data_tests: [unique, not_null]
+        description: Empty when the export has no landed batch.
+        data_tests: [unique]
+      - name: export_name
+        data_tests: [not_null]
+      - name: is_complete
+        data_tests: [not_null]
 
   - name: dq_summary
     description: Rows caught by each quarantine rule and each soft flag, per batch.

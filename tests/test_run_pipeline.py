@@ -53,6 +53,13 @@ def test_load_then_status_shows_batch_loads(cli, raw_dir, capsys):
     assert "Batch loads" in out
 
 
+def test_load_fails_when_a_configured_export_never_landed(cli, raw_dir, capsys):
+    assert cli("ingest", "--raw", str(raw_dir), "--export", "export_1.zip") == 0
+
+    assert cli("load") == 1
+    assert "MISSING    export_2.zip" in capsys.readouterr().out
+
+
 def test_status_before_any_run(cli, capsys):
     assert cli("status") == 0
     assert "No ingestion attempts yet" in capsys.readouterr().out

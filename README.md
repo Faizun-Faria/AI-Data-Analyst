@@ -79,7 +79,7 @@ Every rule here comes from the [data profile](docs/04-data-profile.md); the [war
 - **Quarantine.** A row with an invalid ID or date, a missing product or company, or a repeated ID goes to `quality.quarantine_complaints` with the rule it broke, and never reaches the marts.
 - **Flags.** Rows with smaller issues (a missing state or issue, a date sent before the date received) stay in the marts with a flag, so totals aren't understated. `quality.dq_summary` counts every rule and flag per batch.
 - **Star schema.** `marts.fct_complaints` (one row per complaint, with its `batch_id`) joins to `dim_company`, `dim_product` and `dim_date`. Narratives live in `marts.complaint_narratives`. `dim_product.product_group` stays stable across the CFPB's 2017 and 2023 product renames.
-- **Completeness.** For every batch, rows counted at ingestion must equal rows loaded, which must equal rows in the marts plus rows in quarantine. If not, the build fails and names the batch.
+- **Completeness.** Every export listed in `config/sources/cfpb.yaml` must have a landed batch. For every batch, rows counted at ingestion must equal rows loaded, which must equal rows in the marts plus rows in quarantine. If not, `load` or the build fails and names the export or batch.
 
 ## Project layout
 

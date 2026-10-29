@@ -31,7 +31,7 @@ data/raw/*.zip                         landed in phase 1
             marts.fct_complaints               one row per complaint, keys + flags + batch_id
             marts.dim_company · dim_product · dim_date
             marts.complaint_narratives         complaint_id + narrative
-            quality.completeness_by_batch      audited = loaded = in marts + quarantined
+            quality.completeness_by_batch      every configured export landed; audited = loaded = in marts + quarantined
             quality.dq_summary                 rows caught by each rule, per batch
 ```
 
@@ -75,5 +75,5 @@ data/raw/*.zip                         landed in phase 1
 - **Keys:** `fct_complaints.complaint_id` is unique and never empty; every date, company and product key exists in its dimension.
 - **Lookups:** a product missing from `product_groups.csv`, or a company response missing from `company_responses.csv`, fails the build, so a new value can't slip through unmapped.
 - **Allowed values:** `failed_rule`, `response_status` and `relief_type` may only hold known values.
-- **Completeness:** `tests/assert_batches_complete.sql` fails the build when any batch's counts don't add up, and `run_pipeline.py transform` prints the batch (user story US-04).
+- **Completeness:** `tests/assert_batches_complete.sql` fails the build when any batch's counts don't add up, or when an export listed in `config/sources/cfpb.yaml` has no landed batch at all; `run_pipeline.py transform` prints which one (user story US-04). `load` reports a missing export first and exits with an error.
 - **CI on made-up data:** `tests/test_warehouse.py` builds the warehouse from two small exports with planted problems and checks each row lands where this design says. It also checks that an unmapped product and a lost row both fail the build.
