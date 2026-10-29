@@ -1,0 +1,35 @@
+# Named filters: business ideas defined once, including across the CFPB's taxonomy changes
+# (docs/06-semantic-profile.md lists the issues and sub-issues of each era).
+
+segments:
+  mvp_scope:
+    label: MVP scope
+    where: >
+      p.product_group = 'Credit card'
+      and f.date_received between date '2021-09-01' and date '2026-08-31'
+    joins: [product]
+    description: Credit card complaints from the last five years of the archive, the scope of phases 4 and 5.
+
+  account_opening_issues:
+    label: Bank account opening problems
+    where: >
+      p.product_group = 'Bank account'
+      and f.issue in ('Account opening, closing, or management', 'Opening an account')
+    joins: [product]
+    description: >
+      Bank account complaints about opening an account. Before April 2017 the only
+      matching issue also covers closing and managing accounts, so this is broader there.
+    caveats: [issue_taxonomy, unauthorised_categories]
+
+  accounts_opened_without_consent:
+    label: Accounts or cards opened without consent
+    where: >
+      f.issue = 'Unsolicited issuance of credit card'
+      or f.sub_issue in ('Account opened as a result of fraud',
+      'Account opened without my consent or knowledge',
+      'Card opened as result of identity theft or fraud',
+      'Card opened without my consent or knowledge')
+    description: >
+      Bank accounts or credit cards opened that the consumer didn't ask for. Credit cards
+      are covered from December 2011; bank accounts only from April 2017.
+    caveats: [unauthorised_categories]

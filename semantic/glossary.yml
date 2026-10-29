@@ -1,0 +1,19 @@
+# Plain-English meanings of the terms questions, answers and definitions use.
+
+glossary:
+  CFPB: The Consumer Financial Protection Bureau, the US agency that collected and published these complaints.
+  Complaint: One consumer's report about a financial product or service, as published by the CFPB.
+  Date received: The day the CFPB received the complaint. Every time-based metric uses this date.
+  Product group: A grouping of products that stays the same across the CFPB's renames in April 2017 and August 2023.
+  Issue: What the complaint is about, chosen by the consumer from the CFPB's list at the time; sub-issues refine it.
+  Company response: How the company said it closed the complaint, such as "Closed with explanation".
+  Relief: Something the consumer got as a result of the complaint; monetary relief is money, non-monetary relief is any other change, such as a corrected report.
+  Open complaint: A complaint still "In progress" when the archive was published.
+  Timely response: The company answered within the time the CFPB expects, as recorded in "Timely response?".
+  Narrative: The consumer's own description of the complaint, published only with their consent.
+  Tags: Markers the CFPB adds for complaints from older Americans and servicemembers.
+  Batch: One landed export of the archive; every complaint traces back to the batch it arrived in.
+  Quarantine: Rows that broke a hard data-quality rule; they never reach the metrics.
+  Named filter: A business idea defined once, such as "accounts opened without consent", that a question can use by name.
+  Company alias: A short company name, such as "Wells Fargo", that maps to one exact published name.
+  MVP scope: Credit card complaints received from 2021-09-01 to 2026-08-31, the scope of phases 4 and 5.

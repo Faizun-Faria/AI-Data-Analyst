@@ -1,0 +1,30 @@
+# Questions name companies loosely ("Wells Fargo", "Chase"); the archive uses one exact name
+# per company. Matching part of a name is unsafe ("Citi" would also match Citizens
+# Financial Group), so each short name maps to exactly one published name. Names come from
+# the top companies in docs/06-semantic-profile.md; `python run_pipeline.py check-semantic`
+# confirms every one exists in the warehouse.
+
+companies:
+  WELLS FARGO & COMPANY: [Wells Fargo]
+  BANK OF AMERICA, NATIONAL ASSOCIATION: [Bank of America, BofA]
+  JPMORGAN CHASE & CO.: [JPMorgan Chase, JPMorgan, Chase]
+  CITIBANK, N.A.: [Citibank, Citi]
+  CAPITAL ONE FINANCIAL CORPORATION: [Capital One]
+  SYNCHRONY FINANCIAL: [Synchrony]
+  AMERICAN EXPRESS COMPANY: [American Express, Amex]
+  DISCOVER BANK: [Discover]
+  U.S. BANCORP: [U.S. Bank, US Bank]
+  NAVY FEDERAL CREDIT UNION: [Navy Federal]
+  PNC Bank N.A.: [PNC]
+  TD BANK US HOLDING COMPANY: [TD Bank]
+  TRUIST FINANCIAL CORPORATION: [Truist]
+  BARCLAYS BANK DELAWARE: [Barclays]
+  GOLDMAN SACHS BANK USA: [Goldman Sachs]
+  ALLY FINANCIAL INC.: [Ally]
+  Bread Financial Holdings, Inc.: [Bread Financial]
+  Paypal Holdings, Inc: [PayPal]
+  Chime Financial Inc: [Chime]
+  Navient Solutions, LLC.: [Navient]
+  TRANSUNION INTERMEDIATE HOLDINGS, INC.: [TransUnion]
+  EQUIFAX, INC.: [Equifax]
+  Experian Information Solutions Inc.: [Experian]

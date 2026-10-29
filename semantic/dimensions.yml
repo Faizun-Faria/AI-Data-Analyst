@@ -1,0 +1,116 @@
+# What metrics can be broken down or filtered by. `sql` is evaluated against the tables in
+# models.yml; `join` names the table it needs, if any. `received` is the time dimension:
+# group it by day, week, month, quarter or year.
+
+dimensions:
+  received:
+    label: Date received
+    type: time
+    sql: f.date_received
+    description: The day the CFPB received the complaint.
+    caveats: [partial_years]
+
+  product_group:
+    label: Product group
+    type: category
+    sql: p.product_group
+    join: product
+    description: >
+      A product group that stays the same across the CFPB's renames, such as Credit card
+      or Bank account. Use this, not product, to compare years.
+
+  product:
+    label: Product
+    type: category
+    sql: p.product
+    join: product
+    description: The product name as published at the time.
+    caveats: [product_renames]
+
+  sub_product:
+    label: Sub-product
+    type: category
+    sql: p.sub_product
+    join: product
+    description: The sub-product as published, such as "Store credit card"; often empty before April 2017.
+    caveats: [product_renames]
+
+  issue:
+    label: Issue
+    type: category
+    sql: f.issue
+    description: What the complaint is about, as the consumer chose it from the CFPB's list.
+    caveats: [issue_taxonomy]
+
+  sub_issue:
+    label: Sub-issue
+    type: category
+    sql: f.sub_issue
+    description: A finer issue; many issues had no sub-issues before April 2017.
+    caveats: [issue_taxonomy]
+
+  company:
+    label: Company
+    type: category
+    sql: c.company_name
+    join: company
+    description: >
+      The company complained about, by its exact published name. Common short names, such
+      as "Wells Fargo", are resolved through companies.yml.
+
+  state:
+    label: State
+    type: category
+    sql: f.state
+    description: The consumer's state as a US postal code; empty when missing or not a real code.
+
+  submitted_via:
+    label: Submitted via
+    type: category
+    sql: f.submitted_via
+    description: How the complaint reached the CFPB, such as Web, Referral or Phone.
+
+  company_response:
+    label: Company response
+    type: category
+    sql: f.company_response
+    description: The company's response as published, such as "Closed with monetary relief".
+
+  response_status:
+    label: Response status
+    type: category
+    sql: f.response_status
+    description: closed, in progress, untimely or unknown.
+    caveats: [open_complaints]
+
+  relief_type:
+    label: Relief type
+    type: category
+    sql: f.relief_type
+    description: monetary, non-monetary, type not recorded, none, pending or unknown.
+    caveats: [relief_known_outcome]
+
+  timely_response:
+    label: Timely response
+    type: boolean
+    sql: f.is_timely_response
+    description: Whether the company answered within the time the CFPB expects.
+
+  older_american:
+    label: Older American
+    type: boolean
+    sql: f.is_older_american
+    description: The complaint is tagged "Older American".
+
+  servicemember:
+    label: Servicemember
+    type: boolean
+    sql: f.is_servicemember
+    description: The complaint is tagged "Servicemember".
+
+  has_narrative:
+    label: Has narrative
+    type: boolean
+    sql: f.has_narrative
+    description: The consumer's own description of the complaint was published.
+    caveats: [narrative_coverage]

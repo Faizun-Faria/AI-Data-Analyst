@@ -6,6 +6,10 @@
     python run_pipeline.py all         # ingest, load and transform in one go
     python run_pipeline.py status      # show every ingestion attempt and batch load
 
+    python run_pipeline.py query complaints --by received:year --where company="Wells Fargo"
+    python run_pipeline.py check-semantic   # phase 3: run every definition on the warehouse
+    python run_pipeline.py catalog          # phase 3: regenerate docs/08-metric-catalog.md
+
     python run_pipeline.py ingest --export CCDB_Export_21_August_2026.zip
 
 Raw files land in data/raw; the audit tables and the warehouse live in
@@ -18,15 +22,19 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from datetime import date
 from pathlib import Path
 
-from query_cf import audit, load
+import duckdb
+
+from query_cf import audit, load, semantic
 from query_cf.config import DEFAULT_CONFIG_DIR, ConfigError, load_sources
 from query_cf.ingest import ingest_source
 from query_cf.storage import open_store
 
 DEFAULT_RAW = os.environ.get("QUERY_CF_RAW", "data/raw")
 DEFAULT_DB = os.environ.get("QUERY_CF_DB", "data/warehouse/query_cf.duckdb")
+CATALOG = Path(__file__).resolve().parent / "docs" / "08-metric-catalog.md"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,6 +68,28 @@ def build_parser() -> argparse.ArgumentParser:
     transform.add_argument("--select", help="only these dbt models (dbt selection syntax)")
     commands.add_parser("all", parents=[raw], help="ingest, load and transform")
     commands.add_parser("status", help="show every ingestion attempt and batch load")
+
+    query = commands.add_parser("query", help="answer a metric question from the semantic layer")
+    query.add_argument("metrics", nargs="+", help="metric names, such as complaints")
+    query.add_argument(
+        "--by", action="append", default=[], help="dimension to group by; received:month for time"
+    )
+    query.add_argument(
+        "--where",
+        action="append",
+        default=[],
+        metavar="DIMENSION=VALUE",
+        help="keep only matching complaints; repeat a dimension to allow several values",
+    )
+    query.add_argument("--segment", action="append", default=[], help="named filter to apply")
+    query.add_argument("--from", dest="received_from", type=date.fromisoformat, help="YYYY-MM-DD")
+    query.add_argument("--to", dest="received_to", type=date.fromisoformat, help="YYYY-MM-DD")
+    query.add_argument("--top", type=int, help="only the N rows with the highest first metric")
+    query.add_argument("--sql-only", action="store_true", help="print the SQL without running it")
+
+    catalog = commands.add_parser("catalog", help="regenerate the metric catalog document")
+    catalog.add_argument("--out", type=Path, default=CATALOG)
+    commands.add_parser("check-semantic", help="run every semantic definition on the warehouse")
     return parser
 
 
@@ -147,6 +177,95 @@ def cmd_all(args: argparse.Namespace) -> int:
     return 0
 
 
+def open_warehouse(db: str) -> duckdb.DuckDBPyConnection | None:
+    if not Path(db).exists():
+        print(f"No warehouse at {db}. Run: python run_pipeline.py all")
+        return None
+    return duckdb.connect(db, read_only=True)
+
+
+def cmd_query(args: argparse.Namespace) -> int:
+    filters: dict[str, list[str]] = {}
+    for item in args.where:
+        name, sep, value = item.partition("=")
+        if not sep:
+            print(f"--where needs DIMENSION=VALUE, got {item!r}")
+            return 2
+        filters.setdefault(name.strip(), []).append(value.strip().strip('"'))
+    request = semantic.MetricQuery(
+        metrics=tuple(args.metrics),
+        by=tuple(args.by),
+        filters={name: tuple(values) for name, values in filters.items()},
+        segments=tuple(args.segment),
+        received_from=args.received_from,
+        received_to=args.received_to,
+        top=args.top,
+    )
+    try:
+        compiled = semantic.compile_query(semantic.load_layer(), request)
+    except semantic.SemanticError as exc:
+        print(f"Query error: {exc}")
+        return 2
+    print(compiled.sql)
+    if args.sql_only:
+        return 0
+
+    conn = open_warehouse(args.db)
+    if conn is None:
+        return 1
+    try:
+        rows = semantic.run_query(conn, compiled)
+    except duckdb.CatalogException:
+        print("\nThe marts aren't built yet. Run: python run_pipeline.py transform")
+        return 1
+    finally:
+        conn.close()
+
+    percent = set(compiled.percent_columns)
+    print()
+    print_table(
+        list(compiled.columns),
+        [
+            tuple(
+                semantic.format_value(v, c in percent, c)
+                for c, v in zip(compiled.columns, row, strict=True)
+            )
+            for row in rows
+        ],
+    )
+    for note in compiled.notes:
+        print(f"\nNote: {note}")
+    for caveat in compiled.caveats:
+        print(f"\nWarning: {caveat}")
+    return 0
+
+
+def cmd_catalog(args: argparse.Namespace) -> int:
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(semantic.render_catalog(semantic.load_layer()), encoding="utf-8")
+    print(f"Catalog written to {args.out}")
+    return 0
+
+
+def cmd_check_semantic(args: argparse.Namespace) -> int:
+    layer = semantic.load_layer()
+    conn = open_warehouse(args.db)
+    if conn is None:
+        return 1
+    try:
+        rows, problems = semantic.check_layer(conn, layer)
+    finally:
+        conn.close()
+    print_table(["kind", "name", "result"], rows)
+    if problems:
+        print(f"\n{len(problems)} problem(s):")
+        for problem in problems:
+            print(f"  {problem}")
+        return 1
+    print("\nEvery definition runs on the warehouse.")
+    return 0
+
+
 def print_table(columns: list[str], rows: list[tuple]) -> None:
     cells = [columns] + [["" if v is None else str(v) for v in row] for row in rows]
     widths = [max(len(row[i]) for row in cells) for i in range(len(columns))]
@@ -183,6 +302,9 @@ COMMANDS = {
     "transform": cmd_transform,
     "all": cmd_all,
     "status": cmd_status,
+    "query": cmd_query,
+    "catalog": cmd_catalog,
+    "check-semantic": cmd_check_semantic,
 }
 
 
@@ -192,6 +314,9 @@ def main(argv: list[str] | None = None) -> int:
         return COMMANDS[args.command](args)
     except ConfigError as exc:
         print(f"Config error: {exc}")
+        return 2
+    except semantic.SemanticError as exc:
+        print(f"Semantic layer error: {exc}")
         return 2
 
 

@@ -1,0 +1,64 @@
+# The measures questions are answered with. Types:
+#   count           count(*) of complaints, optionally only those matching `where`
+#   count_distinct  number of distinct values of `of`
+#   rate            percentage: rows matching `numerator` among rows matching `denominator`
+#                   (the numerator is always counted within the denominator)
+
+metrics:
+  complaints:
+    label: Complaints
+    type: count
+    description: Number of complaints received.
+    caveats: [reports_not_findings, credit_reporting_share]
+
+  companies:
+    label: Companies
+    type: count_distinct
+    of: f.company_key
+    description: Number of different companies complained about.
+
+  open_complaints:
+    label: Open complaints
+    type: count
+    where: f.response_status = 'in progress'
+    description: Complaints the company had not yet closed when the archive was published.
+    caveats: [open_complaints]
+
+  untimely_responses:
+    label: Untimely responses
+    type: count
+    where: f.response_status = 'untimely'
+    description: Complaints whose company response is "Untimely response".
+
+  timely_response_rate:
+    label: Timely response rate
+    type: rate
+    numerator: f.is_timely_response
+    description: Percentage of complaints the company answered within the time the CFPB expects.
+
+  relief_rate:
+    label: Relief rate
+    type: rate
+    numerator: f.relief_type in ('monetary', 'non-monetary', 'type not recorded')
+    denominator: f.response_status = 'closed' and f.relief_type <> 'unknown'
+    description: >
+      Percentage of closed complaints with a known outcome in which the consumer got relief,
+      monetary or not.
+    caveats: [relief_known_outcome, open_complaints]
+
+  monetary_relief_rate:
+    label: Monetary relief rate
+    type: rate
+    numerator: f.relief_type = 'monetary'
+    denominator: f.response_status = 'closed' and f.relief_type <> 'unknown'
+    description: >
+      Percentage of closed complaints with a known outcome in which the consumer got money
+      back or other monetary relief.
+    caveats: [relief_known_outcome, open_complaints]
+
+  narrative_share:
+    label: Share with narrative
+    type: rate
+    numerator: f.has_narrative
+    description: Percentage of complaints whose narrative was published.
+    caveats: [narrative_coverage]

@@ -1,0 +1,36 @@
+# Warnings an answer must carry when it uses a metric, dimension or named filter that
+# lists them. Each comes from a finding in docs/04-data-profile.md or
+# docs/06-semantic-profile.md.
+
+caveats:
+  reports_not_findings: >
+    Complaints are unverified consumer reports: a count shows what was reported, not what
+    happened.
+  credit_reporting_share: >
+    Credit reporting makes up about 81% of all complaints, so totals across products mostly
+    reflect credit reporting.
+  partial_years: >
+    2011 covers December only and 2026 runs to 31 August; compare whole years, or the same
+    months of each year.
+  product_renames: >
+    The CFPB renamed products in April 2017 and August 2023; use the product group to
+    compare across those dates.
+  issue_taxonomy: >
+    Issue and sub-issue names changed in April 2017 and August 2023; an issue that starts
+    or stops on those dates was renamed, not solved.
+  open_complaints: >
+    Nearly 10% of 2026 complaints were still in progress when the archive was published,
+    so outcomes for recent months are incomplete.
+  relief_known_outcome: >
+    Relief rates count closed complaints with a known outcome only; the old "Closed" and
+    "Untimely response" values say nothing about relief and are left out.
+  narrative_coverage: >
+    Narratives start in 2015 and were published only with the consumer's consent; coverage
+    peaked near 48% in 2017 and fell to 2.5% in 2026 as the CFPB stopped publishing them.
+    A change in narrative counts says nothing about consumers.
+  unauthorised_categories: >
+    Before April 2017 there is no bank-account category for accounts opened without
+    consent; "Account opening, closing, or management" covers all opening, closing and
+    management problems. From April 2017 to August 2023 the categories describe accounts or
+    cards opened "as a result of fraud"; from August 2023, "without my consent or
+    knowledge". Unsolicited credit cards have their own issue before April 2017.

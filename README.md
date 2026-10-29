@@ -4,7 +4,7 @@ A conversational AI analyst that turns plain-English questions into validated SQ
 
 The AI part only works because of what sits underneath it: an audited complaints warehouse, and a semantic layer that defines every metric, so the analyst reads precise definitions instead of guessing from raw tables.
 
-> **Status:** phases 0-2 are done. The CFPB archive is ingested, audited and modelled into a tested star schema; the semantic layer and AI analyst come next. See the [roadmap](#roadmap).
+> **Status:** phases 0-3 are done. The CFPB archive is ingested, audited and modelled into a tested star schema, and a semantic layer defines every metric the analyst may use; the AI analyst comes next. See the [roadmap](#roadmap).
 
 ![Architecture: data sources feed audited ingestion, a dbt warehouse and a semantic layer; the AI analyst answers only from defined metrics](docs/images/architecture.png)
 
@@ -20,6 +20,9 @@ Framing documents:
 - [Decision log](docs/03-decision-log.md)
 - [Data profile of all 21 exports](docs/04-data-profile.md)
 - [Warehouse design](docs/05-warehouse-design.md)
+- [Semantic profile of the marts](docs/06-semantic-profile.md)
+- [Semantic layer design](docs/07-semantic-layer.md)
+- [Metric catalog](docs/08-metric-catalog.md)
 
 ## Data
 
@@ -46,6 +49,8 @@ python run_pipeline.py ingest      # all 21 exports, about 1.4 GB
 python run_pipeline.py load        # copy each landed batch into the warehouse
 python run_pipeline.py transform   # dbt builds and tests the star schema
 python run_pipeline.py status      # every ingestion attempt and batch load
+python run_pipeline.py query complaints --by received:year --where company="Wells Fargo"
+python run_pipeline.py check-semantic   # run every semantic definition on the warehouse
 pytest
 ```
 
@@ -81,6 +86,16 @@ Every rule here comes from the [data profile](docs/04-data-profile.md); the [war
 - **Star schema.** `marts.fct_complaints` (one row per complaint, with its `batch_id`) joins to `dim_company`, `dim_product` and `dim_date`. Narratives live in `marts.complaint_narratives`. `dim_product.product_group` stays stable across the CFPB's 2017 and 2023 product renames.
 - **Completeness.** Every export listed in `config/sources/cfpb.yaml` must have a landed batch. For every batch, rows counted at ingestion must equal rows loaded, which must equal rows in the marts plus rows in quarantine. If not, `load` or the build fails and names the export or batch.
 
+## How the semantic layer works
+
+Every definition comes from the [semantic profile](docs/06-semantic-profile.md); the [design](docs/07-semantic-layer.md) explains each choice, and the [metric catalog](docs/08-metric-catalog.md) lists them.
+
+- **Definitions, once.** `semantic/` holds 8 metrics (complaints, open complaints, timely response, relief and monetary relief rates, and more), 16 dimensions, named filters such as "accounts opened without consent", 23 company names and a glossary.
+- **SQL from definitions.** `query` turns a request (metrics, groupings, filters, a date range) into SQL using only those definitions, so the same request always gives the same SQL, and shows the SQL with the answer.
+- **Exact company names.** "Wells Fargo" means WELLS FARGO & COMPANY; nothing matches part of a name, because "Citi" would also match Citizens Financial Group.
+- **Warnings travel with answers.** Each definition lists the caveats it carries, such as open complaints in recent months or narratives fading out in 2026, and every answer prints them.
+- **Checked on real data.** `check-semantic` runs every definition on the warehouse and confirms each company name exists.
+
 ## Project layout
 
 ```text
@@ -91,10 +106,12 @@ query_cf/               pipeline package
   storage.py            raw zone: local folder or S3
   load.py               copies landed batches into the bronze table
   transform.py          runs dbt build on the warehouse
+  semantic.py           loads the semantic layer and turns requests into SQL
 config/sources/         one YAML file per source
 warehouse/              dbt project: seeds, staging, quality and mart models, tests
+semantic/               metrics, dimensions, named filters, company names, warnings, glossary
 scripts/                profile_exports.py: profiles every export before modelling
-docs/                   framing, data profile, warehouse design, decision log
+docs/                   framing, data and semantic profiles, designs, metric catalog, decision log
 tests/                  pytest suite, run in CI
 run_pipeline.py         one command to run the pipeline
 ```
@@ -106,7 +123,7 @@ The MVP is phases 0-5, published at the MVP gate; phases 6-8 follow.
 - [x] **0. Frame:** problem statement, two personas, 14 user stories with acceptance criteria, decision log
 - [x] **1. Ingest:** YAML config per source; batch ID, extract timestamp, SHA-256 and row count in `ingestion_audit`; safe re-runs
 - [x] **2. Warehouse:** dbt on DuckDB, with staging and mart models, data tests, a quarantine table, a completeness check and a star schema
-- [ ] **3. Semantic layer:** every metric and dimension defined, with join paths, column descriptions and a glossary
+- [x] **3. Semantic layer:** every metric and dimension defined, with join paths, column descriptions and a glossary
 - [ ] **4. AI analyst:** question → plan → SQL → sqlglot safety check → run → answer with SQL, row count and assumptions; every question logged
 - [ ] **5. Evaluation:** 50 questions with answers computed in SQL; accuracy by difficulty, run in CI
 - [ ] **6. App and formats:** Streamlit chat app returning a number, a chart or a short report; public demo with usage limits

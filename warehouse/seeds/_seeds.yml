@@ -5,8 +5,9 @@ seeds:
     description: >
       Maps each of the 21 product names in the archive to a group that stays stable across
       the CFPB's renames of April 2017 and August 2023. "Credit card or prepaid card"
-      (2017-2023) maps to Credit card, although some of its complaints are about prepaid
-      cards. A product missing from this file fails the build (dim_product test).
+      (2017-2023) maps to Credit card; its prepaid sub-products are moved to Prepaid card
+      by product_group_overrides. A product missing from this file fails the build
+      (dim_product test).
     config:
       column_types:
         product: varchar
@@ -14,6 +15,24 @@ seeds:
     columns:
       - name: product
         data_tests: [unique, not_null]
+      - name: product_group
+        data_tests: [not_null]
+
+  - name: product_group_overrides
+    description: >
+      Product and sub-product pairs whose group differs from their product's. The
+      2017-2023 product "Credit card or prepaid card" mixed both kinds of card; its five
+      prepaid sub-products (about 19,500 complaints) belong with Prepaid card.
+    config:
+      column_types:
+        product: varchar
+        sub_product: varchar
+        product_group: varchar
+    columns:
+      - name: product
+        data_tests: [not_null]
+      - name: sub_product
+        data_tests: [not_null]
       - name: product_group
         data_tests: [not_null]
 

@@ -31,7 +31,25 @@ def run_dbt(
         cli += ["--target-path", str(target_path)]
     if log_path:
         cli += ["--log-path", str(log_path)]
-    return dbtRunner().invoke(cli).success
+    try:
+        return dbtRunner().invoke(cli).success
+    finally:
+        _release_warehouse()
+
+
+def _release_warehouse() -> None:
+    """Close the DuckDB connection dbt-duckdb keeps open after a run.
+
+    The adapter shares one connection per process and doesn't close it when dbt finishes,
+    so DuckDB would refuse any other connection with different settings, such as the
+    read-only one `run_pipeline.py query` opens, in the same process.
+    """
+    from dbt.adapters.duckdb.connections import DuckDBConnectionManager
+
+    environment = DuckDBConnectionManager._ENV
+    DuckDBConnectionManager.close_all_connections()
+    if environment is not None:
+        environment.close()
 
 
 def incomplete_batches(db_path: str | Path) -> list[tuple]:

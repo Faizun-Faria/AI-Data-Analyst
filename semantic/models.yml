@@ -1,0 +1,17 @@
+# The star schema the semantic layer reads. Every metric is computed over the complaints
+# fact table; the other tables join to it on the keys below, and a query joins only the
+# tables its dimensions, filters and named filters need.
+
+base:
+  table: marts.fct_complaints
+  alias: f
+
+joins:
+  product:
+    table: marts.dim_product
+    alias: p
+    condition: f.product_key = p.product_key
+  company:
+    table: marts.dim_company
+    alias: c
+    condition: f.company_key = c.company_key
